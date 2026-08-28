@@ -119,6 +119,13 @@
   .btn .lbl{display:inline}
   @media (max-width:560px){ .btn .lbl{display:none} .btn{padding:0 10px} }
 
+  /* on the final panel, Next turns into "back to the full page" */
+  .ic-full{display:none}
+  #app.at-end .ic-next{display:none}
+  #app.at-end .ic-full{display:inline-block}
+  #app.at-end #next{background:rgba(206,17,38,.75)}
+  #app.at-end #next:hover{background:var(--accent)}
+
   /* side arrows */
   .nav{
     position:absolute;top:50%;transform:translateY(-50%);z-index:5;
@@ -213,7 +220,8 @@
       <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
     </button>
     <button class="btn nav" id="next" type="button" title="Next (→)">
-      <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+      <svg class="ic-next" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+      <svg class="ic-full" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
     </button>
 
     <div id="caption"></div>
@@ -228,8 +236,9 @@
     <div id="track" role="presentation"><div id="fill"></div></div>
     <div id="counter">–</div>
     <button class="btn" id="next2" type="button" title="Next (→)">
-      <span class="lbl">Next</span>
-      <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+      <span class="lbl" id="nextLbl">Next</span>
+      <svg class="ic-next" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+      <svg class="ic-full" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
     </button>
   </div>
 
@@ -244,9 +253,13 @@
   var stage=$("stage"), canvas=$("canvas"), page=$("page"), spot=$("spot"),
       hole=$("spothole"), hotspots=$("hotspots"), titleEl=$("title"),
       captionEl=$("caption"), counter=$("counter"), fill=$("fill"),
-      track=$("track"), msg=$("msg"), live=$("live"), ovBtn=$("overview");
+      track=$("track"), msg=$("msg"), live=$("live"), ovBtn=$("overview"),
+      app=$("app"), nextLbl=$("nextLbl");
 
   var cfg=null, steps=[], step=0, lastStep=1, base={w:0,h:0}, ready=false;
+  // true only when the full page was reached by pressing Next past the last panel,
+  // so Back can undo that without offering a jump-to-the-ending on a fresh load
+  var cameFromEnd = false;
 
   var MARGIN = 14;        // px of breathing room around the fitted page
   var EDGE   = 10;        // px the page edge may sit inside the frame before panning stops
@@ -431,13 +444,21 @@
     captionEl.textContent = label;
     captionEl.classList.toggle("on", !!label);
 
-    $("prev").disabled = $("prev2").disabled = isFull;
-    $("next").disabled = $("next2").disabled = (step >= n);
+    // One more Next at the end returns to the full page, so it is never a dead end.
+    var atEnd = (n > 0 && step === n);
+    app.classList.toggle("at-end", atEnd);
+    nextLbl.textContent = atEnd ? "Full page" : "Next";
+    $("next").title = $("next2").title = atEnd ? "Back to the full page (→)" : "Next (→)";
 
-    live.textContent = isFull ? "Full page view"
+    $("next").disabled = $("next2").disabled = false;
+    $("prev").disabled = $("prev2").disabled = (isFull && !cameFromEnd);
+
+    live.textContent = isFull
+      ? (cameFromEnd ? "End of the comic. Back to the full page view." : "Full page view")
       : ("Panel "+(cur.panel+1)+" of "+cfg.panels.length
          + (cur.parts>1 ? ", view "+(cur.part+1)+" of "+cur.parts : "")
-         + (label ? ": "+label : ""));
+         + (label ? ": "+label : "")
+         + (atEnd ? ". Last panel." : ""));
   }
 
   function setHole(r){
@@ -447,13 +468,20 @@
     hole.setAttribute("height", (r.h*1000).toFixed(2));
   }
 
-  function go(i, animate){
+  function go(i, animate, fromEnd){
+    cameFromEnd = !!fromEnd;
     step = clamp(i, 0, steps.length);
     if (step > 0) lastStep = step;
     apply(animate);
   }
-  function next(){ if (step < steps.length) go(step+1); }
-  function prev(){ if (step > 0) go(step-1); }
+  function next(){
+    if (step < steps.length) go(step+1);
+    else go(0, undefined, true);          // past the last panel: back out to the full page
+  }
+  function prev(){
+    if (step > 0) go(step-1);
+    else if (cameFromEnd) go(steps.length); // undo that last step back out
+  }
   function toggleFull(){ go(step === 0 ? lastStep : 0); }
 
   /* ---------------- full-page hotspots ---------------- */

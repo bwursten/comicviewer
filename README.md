@@ -94,6 +94,7 @@ your embed at their own config.
 | Next panel | Right arrow, Space, click the artwork, swipe left, or the Next button |
 | Previous panel | Left arrow, swipe right, or the Back button |
 | Start the tour | Click anywhere on the page from the full-page view |
+| Finish | One more Next past the last panel returns to the full page |
 | Jump to a panel | Click it in the full-page view, or click the progress bar |
 | Full page | The *Full page* button, `O`, or `Esc` — press again to return to where you were |
 | First / last | `Home` / `End` |
@@ -103,6 +104,10 @@ The full-page view is clean artwork with nothing drawn over it. Moving the point
 lights up whichever panel is underneath and dims the rest, so a reader who doesn't want the
 guided tour can find what catches their eye and click straight to it. The *Full page* button
 is grey while you're already on the full page and turns red once you're zoomed in.
+
+Next is never a dead end. On the last panel it changes into a *Full page* button, and pressing
+it pulls back out to the whole page — which is also where the tour started, so the comic reads
+as a loop. Back immediately afterwards returns to the last panel, in case the reader overshot.
 
 Panel changes are announced to screen readers, panels are tab-reachable, and everything works
 from the keyboard.
