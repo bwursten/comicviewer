@@ -61,7 +61,55 @@ bothers you on a particular page, merge the strip into the panel above or below 
 
 ## Embedding in WordPress
 
-Add a **Custom HTML** block and paste this, changing the domain and the JSON filename:
+### Recommended: the shortcode plugin
+
+Upload the four viewer files by SFTP to a top-level folder — **not** inside
+`wp-content/themes/`, which a theme switch can wipe:
+
+```
+scoutlife.org/
+└── comics/
+    ├── viewer.html
+    ├── mapper.html          ← staff tool, see below
+    └── pages/
+        ├── peewee-sep2026.jpg
+        └── peewee-sep2026.json
+```
+
+Then copy `wordpress/scoutlife-comic-viewer.php` into `wp-content/mu-plugins/`. Must-use
+plugins load automatically and can't be deactivated by accident from wp-admin. Editors then
+write:
+
+```
+[comic page="peewee-sep2026"]
+[comic page="sia-sep2026" title="Scouts in Action" caption="From the September 2026 issue"]
+[comic page="msia-sep2026" ratio="4/5" width="640" align="wide"]
+```
+
+| Attribute | Default | Notes |
+|---|---|---|
+| `page` | *required* | JSON filename without the extension. Stripped to `A–Z a–z 0–9 _ -`, so it can't escape the comics folder |
+| `title` | `Comic viewer` | The iframe's accessible name |
+| `ratio` | `5/6` | Accepts `5/6`, `5:6` or a decimal. Anything else falls back to the default |
+| `width` | `820` | Max width in px, clamped to 240–2000 |
+| `caption` | — | Optional line under the embed |
+| `align` | `center` | `center`, `left`, `right` or `wide` |
+
+If the paths differ on your server, override them near the top of the plugin file —
+`SLCV_VIEWER_URL`, `SLCV_COMICS_PATH`, `SLCV_DEFAULT_RATIO`, `SLCV_DEFAULT_WIDTH`. Change them
+once and every embed on the site follows.
+
+A `[comic]` with no `page` renders nothing for visitors and a red warning for logged-in
+editors, so a typo never ships as a broken box.
+
+**Keep `mapper.html` unlisted.** It's harmless — entirely client-side, it makes no server
+calls and writes nothing — but put it behind basic auth or at an unguessable path so it
+doesn't turn up in search results.
+
+### Alternative: a plain Custom HTML block
+
+If you'd rather not install anything, add a **Custom HTML** block and paste this, changing the
+domain and the JSON filename:
 
 ```html
 <div style="position:relative;width:100%;max-width:820px;margin:0 auto;padding-top:118%">
@@ -77,10 +125,14 @@ The `padding-top` percentage sets the aspect ratio of the embed box (height ÷ w
 `118%` is a good default for a portrait magazine page. Raise it toward `135%` if you want more
 vertical room on phones; lower it toward `75%` for a wide, letterboxed look on desktop.
 
-**Where to put the files.** Anywhere the web server can serve them — a `/comics/` directory at
-the document root is simplest. The WordPress media library also works, but it renames and
-date-folders uploads, so if you go that route put the full media URL into the mapper's
-*Image path* field and point `?c=` at wherever the JSON ended up.
+### Two gotchas either way
+
+**WordPress blocks `.html` and `.json` uploads through the media library** by default. That's
+a deliberate security measure — don't allow those MIME types site-wide to work around it. Use
+SFTP or the host's file manager for the viewer files.
+
+The page JPGs *can* live in the media library if you prefer. WordPress renames and
+date-folders them, so paste the resulting full media URL into the mapper's *Image path* field.
 
 `viewer.html` only accepts a same-site relative path for `?c=`, so a third party can't point
 your embed at their own config.
