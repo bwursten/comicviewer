@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel Mapper – Comic Viewer</title>
+<style>
+  :root{
+    --bg:#0f1218; --panel:#181c25; --line:#2a303c; --ink:#eef1f6; --muted:#98a1b1;
+    --accent:#ce1126; --accent2:#ffc72c; --ok:#2fa35a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  header{
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    padding:12px 16px;background:var(--panel);border-bottom:1px solid var(--line);
+    position:sticky;top:0;z-index:20;
+  }
+  h1{font-size:15px;margin:0;font-weight:800;letter-spacing:.02em}
+  h1 em{color:var(--accent2);font-style:normal}
+  .grow{flex:1 1 auto}
+  button,.filebtn{
+    appearance:none;border:1px solid var(--line);background:#222836;color:var(--ink);
+    padding:8px 12px;border-radius:8px;font:inherit;font-size:13px;font-weight:650;cursor:pointer;
+  }
+  button:hover,.filebtn:hover{background:#2c3444;border-color:#3a4356}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.primary:hover{background:#e2213a}
+  button.ghost{background:transparent}
+  button:disabled{opacity:.4;cursor:default}
+  input[type=text]{
+    background:#0d1016;border:1px solid var(--line);color:var(--ink);
+    padding:8px 10px;border-radius:8px;font:inherit;font-size:13px;width:100%;
+  }
+  input[type=file]{display:none}
+  label.fld{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--muted);font-weight:700;margin:0 0 4px}
+
+  main{display:grid;grid-template-columns:1fr 340px;gap:0;align-items:start}
+  @media (max-width:900px){ main{grid-template-columns:1fr} }
+
+  #canvasArea{padding:20px;display:flex;justify-content:center;min-height:60vh}
+  #wrap{position:relative;display:inline-block;max-width:100%;
+    box-shadow:0 12px 40px rgba(0,0,0,.6);background:#fff;line-height:0}
+  #img{display:block;max-width:100%;max-height:calc(100vh - 130px);width:auto;height:auto;
+    user-select:none;-webkit-user-drag:none}
+  #overlay{position:absolute;inset:0;cursor:crosshair}
+  #empty{color:var(--muted);text-align:center;align-self:center;max-width:420px}
+  #empty kbd{background:#222836;border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:12px}
+
+  .box{position:absolute;border:2px solid rgba(255,199,44,.9);background:rgba(255,199,44,.10);}
+  .box .num{position:absolute;left:-1px;top:-1px;background:var(--accent2);color:#111;
+    font-size:11px;font-weight:800;padding:1px 5px;border-radius:3px 0 5px 0;line-height:1.4}
+  .box.sel{border-color:var(--accent);background:rgba(206,17,38,.16);z-index:5;cursor:move}
+  .box.sel .num{background:var(--accent);color:#fff}
+  .box.sel .h{position:absolute;width:11px;height:11px;background:#fff;border:2px solid var(--accent);border-radius:2px}
+  .h[data-d=nw]{left:-6px;top:-6px;cursor:nwse-resize}
+  .h[data-d=ne]{right:-6px;top:-6px;cursor:nesw-resize}
+  .h[data-d=sw]{left:-6px;bottom:-6px;cursor:nesw-resize}
+  .h[data-d=se]{right:-6px;bottom:-6px;cursor:nwse-resize}
+  #ghost{position:absolute;border:2px dashed #fff;background:rgba(255,255,255,.12);display:none;pointer-events:none}
+
+  aside{border-left:1px solid var(--line);background:var(--panel);
+    padding:16px;position:sticky;top:57px;max-height:calc(100vh - 57px);overflow:auto}
+  @media (max-width:900px){ aside{position:static;max-height:none;border-left:0;border-top:1px solid var(--line)} }
+  aside section{margin:0 0 18px}
+  aside h2{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);
+    margin:0 0 8px;font-weight:800}
+  .row{display:flex;gap:8px;align-items:center}
+  .row+.row{margin-top:8px}
+
+  ol#list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+  #list li{display:flex;gap:6px;align-items:center;background:#131720;border:1px solid var(--line);
+    border-radius:8px;padding:6px}
+  #list li.sel{border-color:var(--accent);background:#231118}
+  #list .n{flex:none;width:22px;height:22px;border-radius:5px;background:#2a3140;color:var(--ink);
+    font-size:11px;font-weight:800;display:grid;place-items:center;cursor:pointer}
+  #list li.sel .n{background:var(--accent);color:#fff}
+  #list input{flex:1 1 auto;min-width:0;background:transparent;border:0;color:var(--ink);
+    font:inherit;font-size:13px;padding:2px 4px;border-radius:4px}
+  #list input:focus{background:#0d1016;outline:1px solid var(--line)}
+  #list .mini{flex:none;padding:2px 6px;font-size:12px;line-height:1.4;background:transparent;border-color:transparent}
+  #list .mini:hover{background:#2c3444;border-color:var(--line)}
+
+  textarea{width:100%;height:150px;background:#0d1016;border:1px solid var(--line);color:#cfe3ff;
+    border-radius:8px;padding:10px;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}
+  .hint{font-size:12px;color:var(--muted);margin:6px 0 0}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
+    background:var(--ok);color:#fff;padding:9px 18px;border-radius:99px;font-size:13px;font-weight:700;
+    opacity:0;pointer-events:none;transition:all 220ms;z-index:50}
+  .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Panel <em>Mapper</em></h1>
+  <label class="filebtn" for="file">Open image…</label>
+  <input type="file" id="file" accept="image/*">
+  <label class="filebtn" for="jsonfile">Import JSON…</label>
+  <input type="file" id="jsonfile" accept=".json,application/json">
+  <div class="grow"></div>
+  <button id="sort" class="ghost" title="Sort top-to-bottom, left-to-right">Auto reading order</button>
+  <button id="clear" class="ghost">Clear panels</button>
+  <button id="preview" class="primary">Preview in viewer ▸</button>
+</header>
+
+<main>
+  <div id="canvasArea">
+    <div id="empty">
+      <p><strong>Open a comic page to begin.</strong></p>
+      <p>Drag on the image to draw a panel box. Click a box to select it, then drag to move
+      or grab a corner to resize. <kbd>Delete</kbd> removes the selected panel;
+      arrow keys nudge it.</p>
+    </div>
+    <div id="wrap" hidden>
+      <img id="img" alt="">
+      <div id="overlay"><div id="ghost"></div></div>
+    </div>
+  </div>
+
+  <aside>
+    <section>
+      <h2>Comic details</h2>
+      <div class="row" style="display:block">
+        <label class="fld" for="title">Title</label>
+        <input type="text" id="title" placeholder="Pee Wee Harris Looks at Music">
+      </div>
+      <div class="row" style="display:block;margin-top:10px">
+        <label class="fld" for="imgpath">Image path used in the embed</label>
+        <input type="text" id="imgpath" placeholder="comics/peewee-sep2026.jpg">
+      </div>
+      <p class="hint">This is the path the live page will load — relative to
+      <code>viewer.html</code>, or a full URL to your WordPress media library.</p>
+    </section>
+
+    <section>
+      <h2>Panels (<span id="count">0</span>)</h2>
+      <ol id="list"></ol>
+      <p class="hint" id="listhint">No panels yet.</p>
+    </section>
+
+    <section>
+      <h2>Output</h2>
+      <textarea id="out" spellcheck="false" readonly></textarea>
+      <div class="row" style="margin-top:8px">
+        <button id="copy">Copy JSON</button>
+        <button id="download">Download .json</button>
+      </div>
+    </section>
+  </aside>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  var $=function(i){return document.getElementById(i)};
+  var wrap=$("wrap"), img=$("img"), ov=$("overlay"), ghost=$("ghost"),
+      list=$("list"), out=$("out"), titleI=$("title"), pathI=$("imgpath");
+
+  var panels=[], sel=-1, imgLoaded=false, srcName="comic.jpg";
+
+  function toast(t){ var el=$("toast"); el.textContent=t; el.classList.add("on");
+    clearTimeout(el._t); el._t=setTimeout(function(){el.classList.remove("on")},1500); }
+
+  function r4(n){ return Math.round(n*10000)/10000; }
+  function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+
+  /* ---------- image loading ---------- */
+  function setImage(src, name){
+    img.onload = function(){
+      imgLoaded = true;
+      $("empty").hidden = true;
+      wrap.hidden = false;
+      render();
+    };
+    img.src = src;
+    if (name){ srcName = name; if (!pathI.value) pathI.value = "comics/"+name; }
+  }
+
+  $("file").addEventListener("change", function(e){
+    var f = e.target.files[0]; if(!f) return;
+    setImage(URL.createObjectURL(f), f.name);
+    if (!titleI.value) titleI.value = f.name.replace(/\.[a-z]+$/i,"").replace(/[-_]+/g," ");
+  });
+
+  $("jsonfile").addEventListener("change", function(e){
+    var f = e.target.files[0]; if(!f) return;
+    var rd = new FileReader();
+    rd.onload = function(){ importJSON(rd.result); };
+    rd.readAsText(f);
+  });
+
+  function importJSON(text){
+    try{
+      var c = JSON.parse(text);
+      titleI.value = c.title || "";
+      pathI.value  = c.image || "";
+      panels = (c.panels||[]).map(function(p){
+        return {x:+p.x, y:+p.y, w:+p.w, h:+p.h, label:p.label||""};
+      });
+      sel = -1;
+      if (c.image && !imgLoaded) setImage(c.image, c.image.split("/").pop());
+      render();
+      toast("Imported "+panels.length+" panels");
+    }catch(err){ alert("That file isn't valid panel JSON."); }
+  }
+
+  /* ---------- drawing ---------- */
+  function rect(){ return ov.getBoundingClientRect(); }
+  function norm(e){
+    var r = rect();
+    return { x: clamp((e.clientX-r.left)/r.width,0,1), y: clamp((e.clientY-r.top)/r.height,0,1) };
+  }
+
+  var mode=null, start=null, orig=null, dir=null, moved=false;
+
+  ov.addEventListener("pointerdown", function(e){
+    if(!imgLoaded) return;
+    ov.setPointerCapture(e.pointerId);
+    moved = false;
+    var t = e.target;
+    if (t.classList.contains("h")){
+      mode="resize"; dir=t.dataset.d; start=norm(e); orig=Object.assign({},panels[sel]); return;
+    }
+    var boxEl = t.closest && t.closest(".box");
+    if (boxEl && boxEl.classList.contains("sel")){
+      mode="move"; start=norm(e); orig=Object.assign({},panels[sel]); return;
+    }
+    if (boxEl){ sel = +boxEl.dataset.i; mode="move"; start=norm(e); orig=Object.assign({},panels[sel]); render(); return; }
+    mode="draw"; start=norm(e); sel=-1; render();
+    ghost.style.display="block";
+    place(ghost, {x:start.x,y:start.y,w:0,h:0});
+  });
+
+  ov.addEventListener("pointermove", function(e){
+    if(!mode) return;
+    var p = norm(e);
+    if (Math.abs(p.x-start.x)>0.002 || Math.abs(p.y-start.y)>0.002) moved = true;
+
+    if (mode==="draw"){
+      place(ghost, boxFrom(start,p));
+    } else if (mode==="move"){
+      var dx=p.x-start.x, dy=p.y-start.y;
+      var q = panels[sel];
+      q.x = clamp(orig.x+dx, 0, 1-orig.w);
+      q.y = clamp(orig.y+dy, 0, 1-orig.h);
+      render(true);
+    } else if (mode==="resize"){
+      var q2 = panels[sel];
+      var x1=orig.x, y1=orig.y, x2=orig.x+orig.w, y2=orig.y+orig.h;
+      if (dir.indexOf("w")>-1) x1 = clamp(p.x,0,x2-0.01);
+      if (dir.indexOf("e")>-1) x2 = clamp(p.x,x1+0.01,1);
+      if (dir.indexOf("n")>-1) y1 = clamp(p.y,0,y2-0.01);
+      if (dir.indexOf("s")>-1) y2 = clamp(p.y,y1+0.01,1);
+      q2.x=x1; q2.y=y1; q2.w=x2-x1; q2.h=y2-y1;
+      render(true);
+    }
+  });
+
+  ov.addEventListener("pointerup", function(e){
+    if(!mode) return;
+    if (mode==="draw"){
+      ghost.style.display="none";
+      var b = boxFrom(start, norm(e));
+      if (b.w > 0.015 && b.h > 0.015){
+        panels.push({x:b.x,y:b.y,w:b.w,h:b.h,label:""});
+        sel = panels.length-1;
+      }
+    }
+    mode=null; orig=null; dir=null;
+    render();
+  });
+  ov.addEventListener("pointercancel", function(){ mode=null; ghost.style.display="none"; render(); });
+
+  function boxFrom(a,b){
+    return { x:Math.min(a.x,b.x), y:Math.min(a.y,b.y),
+             w:Math.abs(b.x-a.x), h:Math.abs(b.y-a.y) };
+  }
+  function place(el,b){
+    el.style.left=(b.x*100)+"%"; el.style.top=(b.y*100)+"%";
+    el.style.width=(b.w*100)+"%"; el.style.height=(b.h*100)+"%";
+  }
+
+  /* ---------- keyboard ---------- */
+  window.addEventListener("keydown", function(e){
+    if (/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
+    if (sel<0) return;
+    var p = panels[sel], step = e.shiftKey ? 0.02 : 0.002;
+    if (e.key==="Delete"||e.key==="Backspace"){ panels.splice(sel,1); sel=-1; render(); e.preventDefault(); }
+    else if (e.key==="ArrowLeft"){ p.x=clamp(p.x-step,0,1-p.w); render(); e.preventDefault(); }
+    else if (e.key==="ArrowRight"){ p.x=clamp(p.x+step,0,1-p.w); render(); e.preventDefault(); }
+    else if (e.key==="ArrowUp"){ p.y=clamp(p.y-step,0,1-p.h); render(); e.preventDefault(); }
+    else if (e.key==="ArrowDown"){ p.y=clamp(p.y+step,0,1-p.h); render(); e.preventDefault(); }
+    else if (e.key==="Escape"){ sel=-1; render(); }
+  });
+
+  /* ---------- rendering ---------- */
+  function render(light){
+    // boxes
+    var frag = document.createDocumentFragment();
+    panels.forEach(function(p,i){
+      var d = document.createElement("div");
+      d.className = "box" + (i===sel?" sel":"");
+      d.dataset.i = i;
+      place(d,p);
+      d.innerHTML = '<span class="num">'+(i+1)+'</span>' + (i===sel ?
+        '<i class="h" data-d="nw"></i><i class="h" data-d="ne"></i><i class="h" data-d="sw"></i><i class="h" data-d="se"></i>' : '');
+      frag.appendChild(d);
+    });
+    Array.prototype.slice.call(ov.querySelectorAll(".box")).forEach(function(n){n.remove()});
+    ov.appendChild(frag);
+
+    if (light) { writeOut(); return; }
+
+    // list
+    list.innerHTML="";
+    panels.forEach(function(p,i){
+      var li=document.createElement("li");
+      if(i===sel) li.className="sel";
+      var n=document.createElement("button"); n.className="n"; n.textContent=i+1;
+      n.title="Select"; n.onclick=function(){ sel=i; render(); };
+      var inp=document.createElement("input"); inp.type="text"; inp.value=p.label;
+      inp.placeholder="Caption (optional)";
+      inp.oninput=function(){ p.label=inp.value; writeOut(); };
+      var up=mini("↑","Move up",function(){ if(i>0){ swap(i,i-1); sel=i-1; render(); } });
+      var dn=mini("↓","Move down",function(){ if(i<panels.length-1){ swap(i,i+1); sel=i+1; render(); } });
+      var del=mini("✕","Delete",function(){ panels.splice(i,1); sel=-1; render(); });
+      li.append(n,inp,up,dn,del);
+      list.appendChild(li);
+    });
+    $("count").textContent = panels.length;
+    $("listhint").textContent = panels.length ? "Drag a box to move it; corners resize." : "No panels yet.";
+    writeOut();
+  }
+  function mini(t,title,fn){ var b=document.createElement("button"); b.className="mini";
+    b.textContent=t; b.title=title; b.onclick=fn; return b; }
+  function swap(a,b){ var t=panels[a]; panels[a]=panels[b]; panels[b]=t; }
+
+  function config(){
+    return {
+      title: titleI.value || "",
+      image: pathI.value || ("comics/"+srcName),
+      width: img.naturalWidth || undefined,
+      height: img.naturalHeight || undefined,
+      spotlight: true,
+      padding: 0.06,
+      panels: panels.map(function(p){
+        var o = {x:r4(p.x), y:r4(p.y), w:r4(p.w), h:r4(p.h)};
+        if (p.label) o.label = p.label;
+        return o;
+      })
+    };
+  }
+  function writeOut(){ out.value = JSON.stringify(config(), null, 2); }
+  titleI.addEventListener("input", writeOut);
+  pathI.addEventListener("input", writeOut);
+
+  /* ---------- actions ---------- */
+  $("sort").onclick = function(){
+    if(!panels.length) return;
+    // group into rows using each box's vertical midpoint, then order left-to-right
+    var rows=[], tol=0.035;
+    panels.slice().sort(function(a,b){ return (a.y+a.h/2)-(b.y+b.h/2); }).forEach(function(p){
+      var mid=p.y+p.h/2;
+      var row = rows.find(function(r){ return Math.abs(r.mid-mid) < Math.max(tol, p.h*0.45); });
+      if(row){ row.items.push(p); row.mid=(row.mid*row.items.length+mid)/(row.items.length+1); }
+      else rows.push({mid:mid, items:[p]});
+    });
+    panels = [].concat.apply([], rows.map(function(r){
+      return r.items.sort(function(a,b){ return a.x-b.x; });
+    }));
+    sel=-1; render(); toast("Sorted into reading order");
+  };
+
+  $("clear").onclick = function(){
+    if(panels.length && !confirm("Remove all "+panels.length+" panels?")) return;
+    panels=[]; sel=-1; render();
+  };
+
+  $("copy").onclick = function(){
+    out.select(); out.setSelectionRange(0,99999);
+    navigator.clipboard ? navigator.clipboard.writeText(out.value).then(function(){toast("JSON copied")})
+                        : (document.execCommand("copy"), toast("JSON copied"));
+  };
+
+  $("download").onclick = function(){
+    var name = (pathI.value.split("/").pop()||"comic").replace(/\.[a-z]+$/i,"") + ".json";
+    var b = new Blob([out.value], {type:"application/json"});
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(b); a.download = name; a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href) }, 1000);
+  };
+
+  $("preview").onclick = function(){
+    if(!panels.length){ alert("Draw at least one panel first."); return; }
+    var c = config();
+    // Preview uses whatever image is currently on screen, so local files work too.
+    c.image = img.src;
+    var b64 = btoa(unescape(encodeURIComponent(JSON.stringify(c))));
+    window.open("viewer.html?config="+encodeURIComponent(b64), "_blank");
+  };
+
+  // allow ?img=... to preload a page
+  var m = /[?&]img=([^&]*)/.exec(location.search);
+  if (m) setImage(decodeURIComponent(m[1]), decodeURIComponent(m[1]).split("/").pop());
+
+  render();
+})();
+</script>
+</body>
+</html>
