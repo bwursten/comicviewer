@@ -7,13 +7,6 @@
   "padding": 0.06,
   "panels": [
     {
-      "x": 0.01,
-      "y": 0.005,
-      "w": 0.98,
-      "h": 0.142,
-      "label": "The Wacky Adventures of Commander Bot"
-    },
-    {
       "x": 0.048,
       "y": 0.15,
       "w": 0.575,

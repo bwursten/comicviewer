@@ -14,7 +14,6 @@
     --accent2:#ffc72c;
     --btn:rgba(255,255,255,.10);
     --btn-hover:rgba(255,255,255,.20);
-    --ui-h:56px;
     --ease:cubic-bezier(.22,.61,.36,1);
     --dur:750ms;
   }
@@ -36,7 +35,6 @@
     cursor:zoom-in;
     -webkit-tap-highlight-color:transparent;
   }
-  #stage.is-overview{cursor:default}
   #canvas{
     position:absolute;left:0;top:0;transform-origin:0 0;
     will-change:transform;
@@ -51,30 +49,44 @@
   }
   #spot{
     position:absolute;inset:0;width:100%;height:100%;
-    pointer-events:none;opacity:0;transition:opacity 400ms var(--ease);
+    pointer-events:none;opacity:0;transition:opacity 300ms var(--ease);
   }
-  #stage:not(.is-overview) #spot.on{opacity:1}
+  #spot.on{opacity:1}
+  /* smooth mask travel while sweeping the mouse across the full-page view */
+  #spot.smooth #spothole{
+    transition:x 260ms var(--ease), y 260ms var(--ease),
+               width 260ms var(--ease), height 260ms var(--ease);
+  }
 
-  /* ---------- overview hotspots ---------- */
-  #hotspots{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity 300ms var(--ease)}
+  /* ---------- full-page hotspots ----------
+     Deliberately invisible: the full page reads as clean artwork. Outline and
+     number only appear for the panel under the pointer. */
+  #hotspots{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity 250ms var(--ease)}
   #stage.is-overview #hotspots{opacity:1;pointer-events:auto}
   .hot{
-    position:absolute;border:2px solid rgba(255,199,44,.85);
-    border-radius:4px;background:rgba(20,24,34,.18);
-    display:flex;align-items:flex-start;justify-content:flex-start;
-    padding:0;cursor:pointer;transition:background 150ms,border-color 150ms,transform 150ms;
+    position:absolute;padding:0;cursor:pointer;
+    background:transparent;border:2px solid transparent;border-radius:5px;
+    transition:border-color 180ms var(--ease), box-shadow 180ms var(--ease);
   }
-  .hot:hover,.hot:focus-visible{background:rgba(206,17,38,.30);border-color:#fff;outline:none;z-index:2}
   .hot span{
-    display:block;min-width:22px;height:22px;margin:-1px 0 0 -1px;
-    background:var(--accent);color:#fff;font-size:12px;font-weight:800;
-    line-height:22px;text-align:center;border-radius:4px 0 6px 0;
-    padding:0 5px;box-shadow:0 1px 4px rgba(0,0,0,.4);
+    position:absolute;left:-2px;top:-2px;
+    min-width:24px;height:24px;line-height:24px;padding:0 6px;
+    background:var(--accent);color:#fff;font-size:12px;font-weight:800;text-align:center;
+    border-radius:5px 0 7px 0;box-shadow:0 1px 5px rgba(0,0,0,.45);
+    opacity:0;transform:scale(.7);transform-origin:0 0;
+    transition:opacity 180ms var(--ease), transform 180ms var(--ease);
+    pointer-events:none;
   }
+  .hot:hover,.hot:focus-visible{
+    border-color:var(--accent2);
+    box-shadow:0 0 0 1px rgba(0,0,0,.35), 0 6px 22px rgba(0,0,0,.45);
+    outline:none;z-index:2;
+  }
+  .hot:hover span,.hot:focus-visible span{opacity:1;transform:scale(1)}
 
   /* ---------- top bar ---------- */
   #topbar{
-    position:absolute;left:0;right:0;top:0;z-index:5;
+    position:absolute;left:0;right:0;top:0;z-index:6;
     display:flex;align-items:center;gap:10px;
     padding:10px 12px;
     background:linear-gradient(to bottom,rgba(10,12,18,.78),rgba(10,12,18,0));
@@ -100,17 +112,20 @@
   .btn:active{transform:scale(.95)}
   .btn:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
   .btn[disabled]{opacity:.32;cursor:default}
+  /* red only while zoomed in — i.e. while pressing it would do something */
   .btn.is-on{background:var(--accent);color:#fff}
+  .btn.is-on:hover{background:#e2213a}
   .btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
   .btn .lbl{display:inline}
   @media (max-width:560px){ .btn .lbl{display:none} .btn{padding:0 10px} }
 
   /* side arrows */
   .nav{
-    position:absolute;top:50%;transform:translateY(-50%);z-index:4;
+    position:absolute;top:50%;transform:translateY(-50%);z-index:5;
     width:46px;height:64px;border-radius:12px;background:rgba(10,12,18,.45);
   }
   .nav:hover{background:rgba(10,12,18,.7)}
+  .nav:active{transform:translateY(-50%) scale(.94)}
   #prev{left:10px}
   #next{right:10px}
   .nav svg{width:24px;height:24px;stroke-width:2.5}
@@ -161,7 +176,7 @@
   .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
   @media (prefers-reduced-motion:reduce){
-    #canvas,#fill,#spot,#caption{transition-duration:1ms !important}
+    #canvas,#fill,#spot,#caption,#spot.smooth #spothole{transition-duration:1ms !important}
   }
 </style>
 </head>
@@ -190,7 +205,7 @@
         <span class="lbl">Full page</span>
       </button>
       <button class="btn" id="fs" type="button" title="Fullscreen (F)">
-        <svg viewBox="0 0 24 24" id="fsIcon"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
       </button>
     </div>
 
@@ -229,16 +244,21 @@
   var stage=$("stage"), canvas=$("canvas"), page=$("page"), spot=$("spot"),
       hole=$("spothole"), hotspots=$("hotspots"), titleEl=$("title"),
       captionEl=$("caption"), counter=$("counter"), fill=$("fill"),
-      track=$("track"), msg=$("msg"), live=$("live");
+      track=$("track"), msg=$("msg"), live=$("live"), ovBtn=$("overview");
 
-  var cfg=null, step=0, lastPanel=1, base={w:0,h:0}, ready=false, lastFocus=null;
-  var MARGIN = 14;          // px breathing room around the fitted page
-  var DEFAULT_PAD = 0.06;   // fraction of stage kept clear around a zoomed panel
+  var cfg=null, steps=[], step=0, lastStep=1, base={w:0,h:0}, ready=false;
+
+  var MARGIN = 14;        // px of breathing room around the fitted page
+  var EDGE   = 10;        // px the page edge may sit inside the frame before panning stops
+  var FULL   = {x:0,y:0,w:1,h:1};
 
   /* ---------------- config loading ---------------- */
 
   function showMsg(html){ msg.innerHTML = html; msg.classList.add("on"); }
   function hideMsg(){ msg.classList.remove("on"); }
+  function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+  function esc(s){ return String(s).replace(/[&<>"]/g,function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
 
   function qs(name){
     var m = new RegExp("[?&]"+name+"=([^&]*)").exec(window.location.search);
@@ -247,53 +267,44 @@
 
   function loadConfig(){
     showMsg('<div><div class="spinner"></div>Loading comic…</div>');
-
-    if (window.COMIC_CONFIG) { return Promise.resolve(window.COMIC_CONFIG); }
+    if (window.COMIC_CONFIG) return Promise.resolve(window.COMIC_CONFIG);
 
     var inline = qs("config");
-    if (inline) {
+    if (inline){
       try { return Promise.resolve(JSON.parse(decodeURIComponent(escape(atob(inline))))); }
       catch(e){ return Promise.reject(new Error("The inline config could not be decoded.")); }
     }
-
     var url = qs("c") || qs("comic");
-    if (!url) {
-      return Promise.reject(new Error(
-        "No comic specified. Add <code>?c=comics/your-comic.json</code> to the URL."));
-    }
-    // Only same-origin-ish relative paths, to keep embeds predictable.
-    if (/^[a-z]+:\/\//i.test(url) && url.indexOf(location.origin) !== 0) {
+    if (!url) return Promise.reject(new Error(
+      "No comic specified. Add <code>?c=comics/your-comic.json</code> to the URL."));
+    if (/^[a-z]+:\/\//i.test(url) && url.indexOf(location.origin) !== 0)
       return Promise.reject(new Error("Comic config must be a relative path on the same site."));
-    }
+
     return fetch(url, {cache:"default"}).then(function(r){
       if(!r.ok) throw new Error("Could not load <code>"+esc(url)+"</code> ("+r.status+").");
       return r.json();
     });
   }
 
-  function esc(s){ return String(s).replace(/[&<>"]/g,function(c){
-    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
-
   function normalize(c){
     if (!c || !c.image) throw new Error("Config is missing an <code>image</code>.");
     c.panels = (c.panels||[]).filter(function(p){
       return p && isFinite(p.x) && isFinite(p.y) && p.w>0 && p.h>0;
     }).map(function(p){
-      return {
-        x: clamp(+p.x,0,1), y: clamp(+p.y,0,1),
-        w: clamp(+p.w,0.01,1), h: clamp(+p.h,0.01,1),
-        label: p.label || ""
-      };
+      return { x:clamp(+p.x,0,1), y:clamp(+p.y,0,1),
+               w:clamp(+p.w,0.01,1), h:clamp(+p.h,0.01,1), label:p.label||"" };
     });
     if (!c.panels.length) throw new Error("Config has no panels. Map some in <code>mapper.html</code>.");
-    c.pad = isFinite(c.padding) ? clamp(+c.padding,0,.4) : DEFAULT_PAD;
+
+    c.pad       = isFinite(c.padding)  ? clamp(+c.padding,0,.4) : 0.06;
+    c.minZoom   = isFinite(c.minZoom)  ? clamp(+c.minZoom,1,4)  : 1.6;
+    c.maxParts  = isFinite(c.maxParts) ? clamp(+c.maxParts,1,4) : 3;
+    c.split     = c.split !== false;
     c.spotlight = c.spotlight !== false;
-    c.title = c.title || "";
-    c.aspect = (c.width && c.height) ? (c.width/c.height) : null;
+    c.title     = c.title || "";
+    c.aspect    = (c.width && c.height) ? (c.width/c.height) : null;
     return c;
   }
-
-  function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
 
   /* ---------------- layout ---------------- */
 
@@ -302,96 +313,153 @@
     var ar = cfg.aspect || (page.naturalWidth/page.naturalHeight) || 0.76;
     var availW = Math.max(40, sw - MARGIN*2), availH = Math.max(40, sh - MARGIN*2);
     var w = availW, h = w/ar;
-    if (h > availH) { h = availH; w = h*ar; }
+    if (h > availH){ h = availH; w = h*ar; }
     base.w = w; base.h = h;
     canvas.style.width = w+"px";
     canvas.style.height = h+"px";
   }
 
-  // Returns the transform that brings normalized rect r to the centre of the stage,
-  // then pulls the page back so it never floats away from the frame. Without the
-  // clamp, a full-width panel on a narrow phone screen centres correctly but leaves
-  // a large empty band above or below the artwork.
-  var EDGE = 10; // px the page edge may sit inside the stage before we stop panning
-
+  // Transform that centres normalized rect r in the stage, then pulls the page back
+  // so it never floats away from the frame leaving an empty band.
   function transformFor(r, pad){
     var sw = stage.clientWidth, sh = stage.clientHeight;
     var pw = r.w*base.w, ph = r.h*base.h;
-    var s = Math.min((sw*(1-pad))/pw, (sh*(1-pad))/ph);
-    s = Math.max(s, 0.05);
+    var s = Math.max(Math.min((sw*(1-pad))/pw, (sh*(1-pad))/ph), 0.05);
     var cx = (r.x + r.w/2)*base.w, cy = (r.y + r.h/2)*base.h;
-    var tx = sw/2 - s*cx, ty = sh/2 - s*cy;
-
-    var pageW = s*base.w, pageH = s*base.h;
-    tx = axis(tx, pageW, sw);
-    ty = axis(ty, pageH, sh);
-    return { s:s, tx:tx, ty:ty };
+    return {
+      s: s,
+      tx: axis(sw/2 - s*cx, s*base.w, sw),
+      ty: axis(sh/2 - s*cy, s*base.h, sh)
+    };
   }
-
   function axis(t, pageSize, stageSize){
-    if (pageSize <= stageSize - EDGE*2) return (stageSize - pageSize)/2; // fits: centre it
-    return clamp(t, stageSize - pageSize - EDGE, EDGE);                  // overflows: keep edges covered
+    if (pageSize <= stageSize - EDGE*2) return (stageSize - pageSize)/2;
+    return clamp(t, stageSize - pageSize - EDGE, EDGE);
   }
 
-  var FULL = {x:0,y:0,w:1,h:1};
+  /* ---------------- steps ----------------
+     A panel much wider (or taller) than the frame can only be fitted at roughly
+     1:1 — the reader clicks Next and nothing appears to happen. Those panels are
+     broken into overlapping sub-frames that sweep across the panel instead, so
+     every step visibly moves and no artwork is cropped away. */
+
+  var OVERLAP = 0.18;       // fraction of a sub-frame shared with its neighbour
+  var MIN_SPLIT = 0.12;     // panels thinner than this are banners — never split them
+
+  function buildSteps(){
+    var keepPanel = steps.length ? steps[Math.max(0,step-1)].panel : 0;
+    steps = [];
+    cfg.panels.forEach(function(p, pi){
+      splitPanel(p).forEach(function(r, si, all){
+        steps.push({ r:r, panel:pi, part:si, parts:all.length });
+      });
+    });
+    if (step > 0){
+      var i = firstStepOf(keepPanel);
+      step = i > 0 ? i : clamp(step, 1, steps.length);
+    }
+    lastStep = clamp(lastStep, 1, steps.length);
+  }
+
+  function splitPanel(p){
+    if (!cfg.split) return [p];
+    var sw = stage.clientWidth, sh = stage.clientHeight;
+    var fitW = sw*(1-cfg.pad), fitH = sh*(1-cfg.pad);
+    var pw = p.w*base.w, ph = p.h*base.h;
+    if (Math.min(fitW/pw, fitH/ph) >= cfg.minZoom) return [p];   // already zooms enough
+
+    var overW = (pw*cfg.minZoom)/fitW, overH = (ph*cfg.minZoom)/fitH;
+    if (overW >= overH && p.h >= MIN_SPLIT) return slice(p, parts(overW), "x");
+    if (overH >  overW && p.w >= MIN_SPLIT) return slice(p, parts(overH), "y");
+    return [p];
+  }
+
+  function parts(over){
+    return clamp(Math.ceil((over - OVERLAP)/(1 - OVERLAP)), 1, cfg.maxParts);
+  }
+
+  function slice(p, k, ax){
+    if (k < 2) return [p];
+    var len   = ax==="x" ? p.w : p.h;
+    var start = ax==="x" ? p.x : p.y;
+    var seg   = len / (k - (k-1)*OVERLAP);
+    var adv   = seg * (1 - OVERLAP);
+    var out=[];
+    for (var i=0;i<k;i++){
+      var r = {x:p.x, y:p.y, w:p.w, h:p.h, label:p.label};
+      if (ax==="x"){ r.x = start + i*adv; r.w = seg; }
+      else         { r.y = start + i*adv; r.h = seg; }
+      out.push(r);
+    }
+    return out;
+  }
+
+  function firstStepOf(pi){
+    for (var i=0;i<steps.length;i++) if (steps[i].panel === pi) return i+1;
+    return 0;
+  }
+
+  /* ---------------- rendering ---------------- */
 
   function apply(animate){
     if (!ready) return;
-    var isOv = (step === 0);
-    var r = isOv ? FULL : cfg.panels[step-1];
-    var pad = isOv ? 0 : cfg.pad;
-    var t = transformFor(r, pad);
+    var isFull = (step === 0);
+    var cur = isFull ? null : steps[step-1];
+    var r   = isFull ? FULL : cur.r;
+    var t   = transformFor(r, isFull ? 0 : cfg.pad);
 
     if (animate === false) canvas.style.transition = "none";
     canvas.style.transform = "translate("+t.tx.toFixed(2)+"px,"+t.ty.toFixed(2)+"px) scale("+t.s.toFixed(5)+")";
-    if (animate === false) { void canvas.offsetWidth; canvas.style.transition = ""; }
+    if (animate === false){ void canvas.offsetWidth; canvas.style.transition = ""; }
 
-    stage.classList.toggle("is-overview", isOv);
-    $("overview").classList.toggle("is-on", isOv);
-    $("overview").setAttribute("aria-pressed", isOv ? "true" : "false");
+    stage.classList.toggle("is-overview", isFull);
+    stage.style.cursor = isFull ? "default" : "zoom-in";
 
-    // spotlight hole (svg viewBox is 0 0 1000 1000, stretched over the page)
-    if (cfg.spotlight && !isOv){
-      hole.setAttribute("x", (r.x*1000).toFixed(2));
-      hole.setAttribute("y", (r.y*1000).toFixed(2));
-      hole.setAttribute("width", (r.w*1000).toFixed(2));
-      hole.setAttribute("height", (r.h*1000).toFixed(2));
-      spot.classList.add("on");
-    } else {
-      spot.classList.remove("on");
-    }
+    // Grey while already on the full page, red once there's something to go back from.
+    ovBtn.classList.toggle("is-on", !isFull);
+    ovBtn.setAttribute("aria-pressed", isFull ? "true" : "false");
 
-    var n = cfg.panels.length;
-    counter.textContent = isOv ? ("Full page · "+n+" panels") : (step+" / "+n);
-    fill.style.width = (isOv ? 0 : (step/n)*100) + "%";
+    spot.classList.remove("smooth");
+    if (cfg.spotlight && !isFull){ setHole(r); spot.classList.add("on"); }
+    else spot.classList.remove("on");
 
-    var cap = isOv ? "" : (cfg.panels[step-1].label||"");
-    captionEl.textContent = cap;
-    captionEl.classList.toggle("on", !!cap);
+    var n = steps.length;
+    counter.textContent = isFull ? ("Full page · "+cfg.panels.length+" panels") : (step+" / "+n);
+    fill.style.width = (isFull ? 0 : (step/n)*100) + "%";
 
-    var atEnd = step >= n;
-    $("prev").disabled = $("prev2").disabled = isOv;
-    $("next").disabled = $("next2").disabled = atEnd;
+    var label = isFull ? "" : (cfg.panels[cur.panel].label || "");
+    captionEl.textContent = label;
+    captionEl.classList.toggle("on", !!label);
 
-    live.textContent = isOv ? "Full page view" :
-      ("Panel "+step+" of "+n+(cap?": "+cap:""));
+    $("prev").disabled = $("prev2").disabled = isFull;
+    $("next").disabled = $("next2").disabled = (step >= n);
+
+    live.textContent = isFull ? "Full page view"
+      : ("Panel "+(cur.panel+1)+" of "+cfg.panels.length
+         + (cur.parts>1 ? ", view "+(cur.part+1)+" of "+cur.parts : "")
+         + (label ? ": "+label : ""));
+  }
+
+  function setHole(r){
+    hole.setAttribute("x", (r.x*1000).toFixed(2));
+    hole.setAttribute("y", (r.y*1000).toFixed(2));
+    hole.setAttribute("width",  (r.w*1000).toFixed(2));
+    hole.setAttribute("height", (r.h*1000).toFixed(2));
   }
 
   function go(i, animate){
-    var n = cfg.panels.length;
-    step = clamp(i, 0, n);
-    if (step > 0) lastPanel = step;
+    step = clamp(i, 0, steps.length);
+    if (step > 0) lastStep = step;
     apply(animate);
   }
-  function next(){ if (step < cfg.panels.length) go(step+1); }
+  function next(){ if (step < steps.length) go(step+1); }
   function prev(){ if (step > 0) go(step-1); }
-  function toggleOverview(){ go(step === 0 ? lastPanel : 0); }
+  function toggleFull(){ go(step === 0 ? lastStep : 0); }
 
-  /* ---------------- overview hotspots ---------------- */
+  /* ---------------- full-page hotspots ---------------- */
 
   function buildHotspots(){
     hotspots.innerHTML = "";
-    var sw = stage.clientWidth, sh = stage.clientHeight;
     var t = transformFor(FULL, 0);
     cfg.panels.forEach(function(p,i){
       var b = document.createElement("button");
@@ -402,56 +470,78 @@
       b.style.width  = (t.s*p.w*base.w) + "px";
       b.style.height = (t.s*p.h*base.h) + "px";
       b.title = p.label || ("Panel "+(i+1));
-      b.setAttribute("aria-label", "Jump to panel "+(i+1)+(p.label?": "+p.label:""));
+      b.setAttribute("aria-label", "Zoom to panel "+(i+1)+(p.label?": "+p.label:""));
       b.innerHTML = "<span>"+(i+1)+"</span>";
-      b.addEventListener("click", function(e){ e.stopPropagation(); go(i+1); });
+
+      b.addEventListener("pointerenter", function(){ hover(p); });
+      b.addEventListener("focus",        function(){ hover(p); });
+      b.addEventListener("pointerleave", unhover);
+      b.addEventListener("blur",         unhover);
+      b.addEventListener("click", function(e){
+        e.stopPropagation();
+        unhover();
+        var s = firstStepOf(i);
+        if (s) go(s);
+      });
       hotspots.appendChild(b);
     });
-    void sw; void sh;
   }
+
+  // Hovering a panel in the full-page view dims the rest of the page.
+  function hover(p){
+    if (step !== 0 || !cfg.spotlight) return;
+    spot.classList.add("smooth");
+    setHole(p);
+    spot.classList.add("on");
+  }
+  function unhover(){
+    if (step !== 0) return;
+    spot.classList.remove("on");
+  }
+  hotspots.addEventListener("pointerleave", unhover);
 
   /* ---------------- input ---------------- */
 
   function wire(){
-    $("next").addEventListener("click", function(e){ e.stopPropagation(); next(); });
-    $("prev").addEventListener("click", function(e){ e.stopPropagation(); prev(); });
-    $("next2").addEventListener("click", next);
-    $("prev2").addEventListener("click", prev);
-    $("overview").addEventListener("click", function(e){ e.stopPropagation(); toggleOverview(); });
-    $("fs").addEventListener("click", toggleFullscreen);
+    // Bind on pointerup as well as click: on a trackpad the pointer often drifts a
+    // few pixels between press and release, and some browsers then withhold click.
+    bindPress($("next"), next);
+    bindPress($("prev"), prev);
+    bindPress($("next2"), next);
+    bindPress($("prev2"), prev);
+    bindPress(ovBtn, toggleFull);
+    bindPress($("fs"), toggleFullscreen);
 
-    // click the artwork to advance (not while in overview — hotspots own the clicks)
     stage.addEventListener("click", function(e){
-      if (step === 0) return;
       if (e.target.closest("button")) return;
       if (dragged) return;
-      next();
+      // Clicking the artwork advances; from the full page it starts the tour.
+      if (step === 0) go(1); else next();
     });
 
-    // progress bar scrubbing
     track.addEventListener("click", function(e){
       var r = track.getBoundingClientRect();
       var f = clamp((e.clientX - r.left)/r.width, 0, 1);
-      go(Math.max(1, Math.ceil(f*cfg.panels.length)));
+      go(Math.max(1, Math.ceil(f*steps.length)));
     });
 
-    // keyboard
     window.addEventListener("keydown", function(e){
       if (e.metaKey||e.ctrlKey||e.altKey) return;
       var k = e.key;
       if (k==="ArrowRight"||k==="PageDown"||k===" "||k==="Enter"){ next(); e.preventDefault(); }
       else if (k==="ArrowLeft"||k==="PageUp"){ prev(); e.preventDefault(); }
       else if (k==="Home"){ go(1); e.preventDefault(); }
-      else if (k==="End"){ go(cfg.panels.length); e.preventDefault(); }
-      else if (k==="o"||k==="O"){ toggleOverview(); e.preventDefault(); }
+      else if (k==="End"){ go(steps.length); e.preventDefault(); }
+      else if (k==="o"||k==="O"){ toggleFull(); e.preventDefault(); }
       else if (k==="Escape"){ if(step!==0){ go(0); e.preventDefault(); } }
       else if (k==="f"||k==="F"){ toggleFullscreen(); e.preventDefault(); }
     });
 
-    // swipe
+    // swipe — ignored when the gesture starts on a control
     var sx=0, sy=0, down=false;
     stage.addEventListener("pointerdown", function(e){
       if (e.button && e.button!==0) return;
+      if (e.target.closest("button")) return;
       down=true; dragged=false; sx=e.clientX; sy=e.clientY;
     });
     stage.addEventListener("pointermove", function(e){
@@ -463,24 +553,43 @@
       var dx = e.clientX - sx, dy = e.clientY - sy;
       if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)*1.4){
         if (dx < 0) next(); else prev();
-        dragged = true;               // suppress the click that follows
-        setTimeout(function(){ dragged=false; }, 0);
-      } else {
-        setTimeout(function(){ dragged=false; }, 0);
+        dragged = true;
       }
+      setTimeout(function(){ dragged=false; }, 0);
     });
     stage.addEventListener("pointercancel", function(){ down=false; dragged=false; });
 
     var rt;
     window.addEventListener("resize", function(){
       clearTimeout(rt);
-      rt = setTimeout(function(){ fitBase(); apply(false); buildHotspots(); }, 90);
+      rt = setTimeout(relayout, 90);
     });
-    document.addEventListener("fullscreenchange", function(){
-      setTimeout(function(){ fitBase(); apply(false); buildHotspots(); }, 60);
-    });
+    document.addEventListener("fullscreenchange", function(){ setTimeout(relayout, 60); });
   }
   var dragged = false;
+
+  // One handler, fired by whichever of click/pointerup arrives first.
+  function bindPress(el, fn){
+    var guard = 0;
+    function run(e){
+      if (el.disabled) return;
+      var now = Date.now();
+      if (now - guard < 350) return;
+      guard = now;
+      e.stopPropagation();
+      e.preventDefault();
+      fn();
+    }
+    el.addEventListener("pointerup", run);
+    el.addEventListener("click", run);
+  }
+
+  function relayout(){
+    fitBase();
+    buildSteps();
+    apply(false);
+    buildHotspots();
+  }
 
   function toggleFullscreen(){
     var el = document.documentElement;
@@ -495,7 +604,7 @@
 
   function loadImage(src){
     return new Promise(function(res,rej){
-      page.onload = function(){ res(); };
+      page.onload  = function(){ res(); };
       page.onerror = function(){ rej(new Error("Could not load the image <code>"+esc(src)+"</code>.")); };
       page.src = src;
     });
@@ -514,17 +623,16 @@
       hideMsg();
       ready = true;
       fitBase();
+      buildSteps();
       go(0, false);
       buildHotspots();
       wire();
 
-      // Swap in a higher-resolution file once it's cached, so zoomed panels stay crisp.
       if (cfg.imageHiRes){
         var hi = new Image();
         hi.onload = function(){ page.src = cfg.imageHiRes; };
         hi.src = cfg.imageHiRes;
       }
-      // Start on the first panel automatically if the config asks for it.
       if (cfg.autostart) setTimeout(function(){ go(1); }, 700);
     })
     .catch(function(err){
@@ -532,8 +640,6 @@
               + (err && err.message ? err.message : "Something went wrong.") + '</div>');
       console.error(err);
     });
-
-  void lastFocus;
 })();
 </script>
 </body>

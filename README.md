@@ -38,6 +38,25 @@ Panel boxes can overlap and don't have to line up with the printed gutters — t
 "what should be on screen for this beat." On a page like *Scouts in Action*, a caption block
 plus its artwork often works better as one box than two.
 
+### Two mapping rules worth knowing
+
+**Skip the page furniture.** Logos, section headers and the legal/credits block at the foot of
+a page are full-page-width strips. A panel as wide as the frame cannot zoom — there is nowhere
+to zoom *to* — so making one a step produces a click where nothing appears to happen. Leave
+them out; they're still visible in the opening full-page view. The four sample configs here
+were mapped this way, which is why *Scouts in Action* is six panels rather than eight.
+
+**Wide panels get swept automatically.** A genuine wide panel — an establishing shot spanning
+the whole page — is handled for you: the viewer breaks it into two or three overlapping
+sub-frames and pans across it, so the reader still sees every part of it at a real zoom level.
+This is recomputed on resize, so the same page might be 6 steps on a desktop and 7 on a phone.
+Set `"split": false` in the config to turn it off.
+
+The one case with no good answer is a *thin* full-width strip, like a "MANY MORE MOMENTS
+LATER…" caption bar. It can't zoom and it can't be swept without cutting the sentence in half,
+so the viewer leaves it whole and relies on the dimming to show it's the current beat. If that
+bothers you on a particular page, merge the strip into the panel above or below it.
+
 ---
 
 ## Embedding in WordPress
@@ -74,14 +93,19 @@ your embed at their own config.
 |---|---|
 | Next panel | Right arrow, Space, click the artwork, swipe left, or the Next button |
 | Previous panel | Left arrow, swipe right, or the Back button |
+| Start the tour | Click anywhere on the page from the full-page view |
 | Jump to a panel | Click it in the full-page view, or click the progress bar |
 | Full page | The *Full page* button, `O`, or `Esc` — press again to return to where you were |
 | First / last | `Home` / `End` |
 | Fullscreen | The expand button or `F` |
 
-The full-page view outlines every panel with its number, so a reader who doesn't want the
-guided tour can jump straight to whatever catches their eye. Panel changes are announced to
-screen readers, and everything is keyboard reachable.
+The full-page view is clean artwork with nothing drawn over it. Moving the pointer across it
+lights up whichever panel is underneath and dims the rest, so a reader who doesn't want the
+guided tour can find what catches their eye and click straight to it. The *Full page* button
+is grey while you're already on the full page and turns red once you're zoomed in.
+
+Panel changes are announced to screen readers, panels are tab-reachable, and everything works
+from the keyboard.
 
 ---
 
@@ -120,6 +144,9 @@ downloaded.
   "height": 916,
   "spotlight": true,
   "padding": 0.06,
+  "minZoom": 1.6,
+  "maxParts": 3,
+  "split": true,
   "autostart": false,
   "panels": [
     { "x": 0.012, "y": 0.010, "w": 0.340, "h": 0.248, "label": "Optional caption" }
@@ -135,6 +162,9 @@ downloaded.
 | `width` / `height` | Pixel size of the image; lets the viewer lay out before the image arrives |
 | `spotlight` | Dims everything outside the current panel. Set `false` to turn it off |
 | `padding` | Breathing room around a zoomed panel, as a fraction of the frame. `0.06` = 6% |
+| `minZoom` | How far a step must zoom past the full-page view before it counts as a real move. Below this, a wide panel is swept in sub-frames instead. Default `1.6` |
+| `maxParts` | Cap on sub-frames per panel. Default `3` |
+| `split` | Set `false` to disable sweeping entirely and always fit each panel whole |
 | `autostart` | If `true`, moves to panel 1 automatically a moment after load |
 | `panels[]` | `x`, `y`, `w`, `h` as fractions of the image (0–1), in reading order. `label` is optional and appears as a caption |
 
@@ -145,15 +175,15 @@ preview button uses — or set `window.COMIC_CONFIG` before the script runs.
 
 ## Notes and limits
 
-- **Very wide panels on portrait phones.** A banner panel that spans the full page width can't
-  zoom much on a narrow screen — there's nowhere to zoom to. The viewer keeps the page flush
-  in the frame and relies on the spotlight to show which strip is current. If a particular
-  page reads badly this way, split the wide panel into two overlapping boxes in the mapper.
-- **No panning within a panel.** Each step is a fixed framing. Drag is reserved for swipe
-  navigation.
+- **Thin full-width strips don't zoom.** See the mapping rules above — this is geometry, not a
+  bug, and the fix is to not make them their own step.
+- **No free panning within a panel.** Each step is a fixed framing; drag is reserved for swipe
+  navigation. Wide panels are swept automatically instead.
 - The viewer avoids `localStorage` entirely, so it works inside restrictive iframe sandboxes.
-- Tested in Chromium at desktop (1280×800, 900×1000) and phone (390×780) sizes; no console
-  errors, all four sample configs load and step correctly.
+- Tested in Chromium at 1100×900, 1000×900, 820×970 and 390×780. No console errors; all four
+  sample configs load, every step lands at 1.6× or better except the one thin banner strip
+  noted above, single clicks on the arrows register first time, and the hover highlight,
+  hotspot jumps, progress scrubbing and fullscreen all behave.
 
 ## Local testing
 
